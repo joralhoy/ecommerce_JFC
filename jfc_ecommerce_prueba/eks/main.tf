@@ -71,23 +71,46 @@ resource "aws_eks_cluster" "eks_cluster" {
 }
 
 
-resource "aws_eks_node_group" "eks_node_group" {
-  cluster_name    = aws_eks_cluster.eks_cluster.name
-  node_group_name = "${var.project_name}-eks-node-group"
-  node_role_arn   = aws_iam_role.eks_node_role.arn
-  subnet_ids      = var.private_subnet_ids
+resource "aws_iam_role" "eks_fargate_pod_execution_role" {
+  name = "${var.project_name}-eks-fargate-pod-execution-role"
 
-  scaling_config {
-    desired_size = var.desired_size
-    max_size     = var.max_size
-    min_size     = var.min_size
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action = "sts:AssumeRole",
+      Effect = "Allow",
+      Principal = {
+        Service = "eks-fargate-pods.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = {
+    Name = "${var.project_name}-eks-fargate-pod-execution-role"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "eks_fargate_pod_execution_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy"
+  role       = aws_iam_role.eks_fargate_pod_execution_role.name
+}
+
+
+resource "aws_eks_fargate_profile" "eks_fargate_profile" {
+  cluster_name           = aws_eks_cluster.eks_cluster.name
+  fargate_profile_name   = "${var.project_name}-fargate-profile"
+  pod_execution_role_arn = aws_iam_role.eks_fargate_pod_execution_role.arn
+
+  subnet_ids = var.private_subnet_ids
+
+  selector {
+    namespace = "default"
   }
 
-  instance_types = [var.instance_type]
-
   depends_on = [
-    aws_iam_role_policy_attachment.eks_worker_node_policy,
-    aws_iam_role_policy_attachment.eks_cni_policy,
-    aws_iam_role_policy_attachment.eks_ec2_container_registry_policy
+    aws_iam_role_policy_attachment.eks_fargate_pod_execution_policy
   ]
+  tags = {
+    Name = "${var.project_name}-fargate-profile"
+  }
 }
