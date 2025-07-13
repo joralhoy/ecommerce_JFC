@@ -1,0 +1,173 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: amazon-cloudwatch
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloudwatch-agent
+  namespace: amazon-cloudwatch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cloudwatch-agent-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cloudwatch-agent-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cloudwatch-agent-role
+subjects:
+- kind: ServiceAccount
+  name: cloudwatch-agent
+  namespace: amazon-cloudwatch
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cloudwatch-agent
+  namespace: amazon-cloudwatch
+spec:
+  selector:
+    matchLabels:
+      name: cloudwatch-agent
+  template:
+    metadata:
+      labels:
+        name: cloudwatch-agent
+    spec:
+      serviceAccountName: cloudwatch-agent
+      containers:
+        - name: cloudwatch-agent
+          image: amazon/cloudwatch-agent:latest
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 200m
+              memory: 200Mi
+          env:
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+            - name: runlog
+              mountPath: /run/log/journal
+            - name: dmesg
+              mountPath: /var/lib/dmesg
+            - name: containerdlog
+              mountPath: /var/lib/docker/containers
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: runlog
+          hostPath:
+            path: /run/log/journal
+        - name: dmesg
+          hostPath:
+            path: /var/lib/dmesg
+        - name: containerdlog
+          hostPath:
+            path: /var/lib/docker/containers
+          - name: config-volume
+            mountPath: /etc/cwagentconfig
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: runlog
+          hostPath:
+            path: /run/log/journal
+        - name: dmesg
+          hostPath:
+            path: /var/lib/dmesg
+        - name: containerdlog
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: config-volume
+          configMap:
+            name: cloudwatch-agent-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudwatch-agent-config
+  namespace: amazon-cloudwatch
+data:
+ 
+  cloudwatch-agent-config.json: |
+    {
+      "metrics": {
+        "metrics_collected": {
+          "cpu": {
+            "measurement": [
+              {"name": "cpu_usage_idle", "rename": "CPU_IDLE", "unit": "Percent"},
+              {"name": "cpu_usage_user", "unit": "Percent"},
+              {"name": "cpu_usage_system", "unit": "Percent"}
+            ],
+            "totalcpu": true,
+            "resources": [
+              "*"
+            ]
+          },
+          "mem": {
+            "measurement": [
+              {"name": "mem_used_percent", "unit": "Percent"}
+            ]
+          },
+          "disk": {
+            "measurement": [
+              {"name": "disk_used_percent", "unit": "Percent"}
+            ],
+            "resources": [
+              "/"
+            ]
+          },
+          "net": {
+            "measurement": [
+              {"name": "bytes_in", "unit": "Bytes"},
+              {"name": "bytes_out", "unit": "Bytes"}
+            ],
+            "resources": [
+              "eth0"
+            ]
+          },
+          "docker": {
+            "measurement": [
+              {"name": "docker_mem_usage", "unit": "Megabytes"},
+              {"name": "docker_cpu_usage", "unit": "Percent"}
+            ],
+            "resources": [
+              "*"
+            ]
+          }
+        },
+        "append_dimensions": {
+          "InstanceId": "${aws:InstanceId}",
+          "AutoScalingGroupName": "${aws:AutoScalingGroupName}",
+          "ImageId": "${aws:ImageId}"
+        },
+        "aggregation_dimensions": [["AutoScalingGroupName"]],
+        "force_flush_interval": 60
+      }
+    }
