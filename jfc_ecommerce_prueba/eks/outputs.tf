@@ -13,4 +13,8 @@ output "eks_cluster_version" {
   value       = aws_eks_cluster.eks_cluster.version
 }
 
+output "eks_cluster_certificate_authority_data" {
+  description = "Datos de la autoridad certificadora del clúster EKS (base64 encoded)"
+  value       = aws_eks_cluster.eks_cluster.certificate_authority[0].data
+}
 

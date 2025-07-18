@@ -1,0 +1,1 @@
+{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"alb","Source":"./alb","Dir":"alb"},{"Key":"aurora","Source":"./aurora","Dir":"aurora"},{"Key":"cloudfront_s3","Source":"./cloudfront","Dir":"cloudfront"},{"Key":"eks","Source":"./eks","Dir":"eks"},{"Key":"s3_tf_state","Source":"./s3_tf_state","Dir":"s3_tf_state"},{"Key":"vpc","Source":"./vpc","Dir":"vpc"}]}

@@ -16,7 +16,7 @@ variable "private_subnet_ids" {
 variable "allowed_cidr_blocks" {
   description = "CIDR blocks permitidos para acceder a Aurora"
   type        = list(string)
-  default     = ["0.0.0.0/0"] # Ajusta para tu configuración
+  default     = ["0.0.0.0/0"] 
 }
 
 variable "master_username" {
