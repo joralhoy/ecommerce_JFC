@@ -13,26 +13,4 @@ variable "private_subnet_ids" {
   type        = list(string)
 }
 
-variable "desired_size" {
-  description = "Número deseado de nodos en el grupo gestionado"
-  type        = number
-  default     = 2
-}
 
-variable "min_size" {
-  description = "Número mínimo de nodos en el grupo gestionado"
-  type        = number
-  default     = 1
-}
-
-variable "max_size" {
-  description = "Número máximo de nodos en el grupo gestionado"
-  type        = number
-  default     = 4
-}
-
-variable "instance_type" {
-  description = "Tipo de instancia EC2 para los nodos del EKS"
-  type        = string
-  default     = "t3.medium"
-}
